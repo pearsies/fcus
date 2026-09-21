@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile & Stats",
+      "description": "Stores user focus progress, free time balance, streak, and daily quests",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "secondsLeft": { "type": "number" },
+        "workSeconds": { "type": "number" },
+        "streak": { "type": "number" },
+        "todayFocusSeconds": { "type": "number" },
+        "todayCredited": { "type": "boolean" },
+        "manualLogged": { "type": "boolean" },
+        "claimedQuests": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "lastDate": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid"]
+    }
+  }
+}

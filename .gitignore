@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Firebase & Cloud Secrets
+firebase-applet-config.json
+!firebase-applet-config.json.example
+serviceAccountKey*.json

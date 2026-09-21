@@ -1,0 +1,12 @@
+@import url('https://fonts.cdnfonts.com/css/open-sauce-sans');
+@import url('https://fonts.cdnfonts.com/css/open-sauce-one');
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Open Sauce Sans', 'Open Sauce One', 'Open Sauce', system-ui, -apple-system, sans-serif;
+    background-color: #fafafa;
+    color: #111111;
+  }
+}
+
