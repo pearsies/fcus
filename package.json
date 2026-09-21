@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "Minimalistic gamified focus timer where working earns relaxation time",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pearsies/fcus.git"
+  },
+  "homepage": "https://github.com/pearsies/fcus#readme",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",

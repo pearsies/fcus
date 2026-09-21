@@ -48,7 +48,7 @@ live demo @ [fcusapp.ai.studio](https://fcusapp.ai.studio)
 ### 1. clone and install
 
 ```bash
-git clone https://github.com/your-username/fcus.git
+git clone https://github.com/pearsies/fcus.git
 cd fcus
 npm install
 ```
