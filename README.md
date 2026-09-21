@@ -1,8 +1,12 @@
 # fcus — Minimalist Focus & Relaxation Timer
 
+<p align="center">
+  <img src="https://res.cloudinary.com/dvskffcq3/image/upload/v1789998285/Screenshot_2026-09-21_at_20.44.37_esv40y.png" alt="fcus Preview" width="100%" />
+</p>
+
 A minimalist, high-contrast focus timer designed around positive reinforcement: **working earns you relaxation time**. As you work, you build continuous focus streaks and multipliers that reward you with free time to spend guilt-free.
 
-Live demo @ fcusapp.ai.studio
+Live demo @ [fcusapp.ai.studio](https://fcusapp.ai.studio)
 ---
 
 ## ✨ Features
