@@ -150,6 +150,32 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
 
+  // Theme state: 'light' | 'dark'
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('fcus_theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('fcus_theme', theme);
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.setAttribute('data-theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   const [isRunning, setIsRunning] = useState<boolean>(true);
   const [activeScreen, setActiveScreen] = useState<ScreenType>(null);
 
@@ -870,7 +896,7 @@ export default function App() {
   ).length;
 
   return (
-    <div className="w-full bg-[#fafafa] text-[#111111] font-['Open_Sauce_Sans','Open_Sauce_One','Open_Sauce',sans-serif]">
+    <div className="w-full min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] font-['Open_Sauce_Sans','Open_Sauce_One','Open_Sauce',sans-serif] transition-colors duration-200">
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
@@ -879,7 +905,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.96 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-[#efeeea] text-[#111111] px-5 py-2 rounded-full text-[13px] font-normal border-none shadow-xs pointer-events-none"
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-[var(--toast-bg)] text-[var(--text-main)] px-5 py-2 rounded-full text-[13px] font-normal border-none shadow-xs pointer-events-none"
           >
             {toastMessage}
           </motion.div>
@@ -888,26 +914,26 @@ export default function App() {
 
       {activeScreen ? (
         /* DEDICATED SEPARATE FULL SCREEN VIEW */
-        <div className="h-screen max-h-screen w-full flex flex-col justify-between items-center select-none px-6 py-6 md:px-12 md:py-8 relative overflow-hidden">
+        <div className="h-screen max-h-screen w-full flex flex-col justify-between items-center select-none px-6 py-6 md:px-12 md:py-8 relative overflow-hidden bg-[var(--bg-main)]">
           {/* Header */}
           <header className="w-full max-w-7xl flex justify-between items-center z-10 shrink-0">
             <button
               onClick={() => setActiveScreen(null)}
-              className="text-[26px] font-bold lowercase tracking-normal text-[#111111] opacity-70 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 outline-none"
+              className="text-[26px] font-bold lowercase tracking-normal text-[var(--text-main)] opacity-70 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 outline-none"
             >
               fcus
             </button>
 
             <button
               onClick={() => setActiveScreen(null)}
-              className="text-[16px] font-normal lowercase tracking-normal text-[#111111] opacity-50 hover:opacity-85 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer bg-transparent border-none p-0 outline-none"
+              className="text-[16px] font-normal lowercase tracking-normal text-[var(--text-main)] opacity-50 hover:opacity-85 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer bg-transparent border-none p-0 outline-none"
             >
               ← timer
             </button>
           </header>
 
           {/* Main Content Area */}
-          <main className="w-full max-w-[500px] my-auto flex flex-col gap-5 z-10 text-[#111111] overflow-y-auto max-h-[calc(100vh-120px)] py-2 pr-1">
+          <main className="w-full max-w-[500px] my-auto flex flex-col gap-5 z-10 text-[var(--text-main)] overflow-y-auto max-h-[calc(100vh-120px)] py-2 pr-1">
             <h2 className="text-[28px] md:text-[34px] font-normal lowercase tracking-tight opacity-80 text-left shrink-0">
               {activeScreen === 'settings' && 'settings'}
               {activeScreen === 'record' && 'record work time'}
@@ -922,7 +948,7 @@ export default function App() {
               {/* Screen 1: Settings */}
               {activeScreen === 'settings' && (
                 <div className="flex flex-col gap-5 text-left">
-                  <div className="flex justify-between items-center py-1 border-b border-[#111111]/10">
+                  <div className="flex justify-between items-center py-1 border-b border-[var(--border-default)]">
                     <span className="text-[15px] opacity-70">Sound Notifications</span>
                     <button
                       onClick={() => setSoundEnabled(!soundEnabled)}
@@ -932,7 +958,17 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="flex justify-between items-center py-1 border-b border-[#111111]/10">
+                  <div className="flex justify-between items-center py-1 border-b border-[var(--border-default)]">
+                    <span className="text-[15px] opacity-70">Theme</span>
+                    <button
+                      onClick={toggleTheme}
+                      className="text-[14px] opacity-75 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 underline"
+                    >
+                      {theme === 'dark' ? 'Dark' : 'Light'}
+                    </button>
+                  </div>
+
+                  <div className="flex justify-between items-center py-1 border-b border-[var(--border-default)]">
                     <span className="text-[15px] opacity-70">Base Multiplier</span>
                     <span className="text-[15px] opacity-80 font-normal">{formatMultiplier(baseMultiplier)}</span>
                   </div>
@@ -967,14 +1003,14 @@ export default function App() {
                       rows={3}
                       value={workDescription}
                       onChange={(e) => setWorkDescription(e.target.value)}
-                      className="w-full bg-transparent border-b border-[#111111]/20 py-1.5 text-[15px] text-[#111111] opacity-90 outline-none focus:border-[#111111]/70 transition-all placeholder-[#111111]/30 resize-none"
+                      className="w-full bg-transparent border-b border-[var(--border-input)] py-1.5 text-[15px] text-[var(--text-main)] opacity-90 outline-none focus:border-[var(--border-input-focus)] transition-all placeholder-[var(--placeholder-color)] resize-none"
                       placeholder="e.g., Read 3 chapters of biology textbook and took summary notes on cellular respiration for 45 minutes."
                       required
                     />
                   </div>
 
                   {evaluationFeedback && (
-                    <div className="p-2.5 bg-[#dddcdc]/50 text-[12px] opacity-80 rounded-lg leading-relaxed">
+                    <div className="p-2.5 bg-[var(--feedback-bg)] text-[12px] opacity-80 rounded-lg leading-relaxed">
                       {evaluationFeedback}
                     </div>
                   )}
@@ -982,7 +1018,7 @@ export default function App() {
                   <button
                     type="submit"
                     disabled={isEvaluatingWork}
-                    className="mt-1 text-left text-[15px] font-normal text-[#111111] opacity-80 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 underline disabled:opacity-40"
+                    className="mt-1 text-left text-[15px] font-normal text-[var(--text-main)] opacity-80 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 underline disabled:opacity-40"
                   >
                     {isEvaluatingWork ? 'Evaluating activity...' : 'Evaluate & Log Work →'}
                   </button>
@@ -1005,7 +1041,7 @@ export default function App() {
                           type="text"
                           value={questionTopic}
                           onChange={(e) => setQuestionTopic(e.target.value)}
-                          className="w-full bg-transparent border-b border-[#111111]/20 py-1.5 text-[15px] text-[#111111] opacity-90 outline-none focus:border-[#111111]/70 transition-all placeholder-[#111111]/30"
+                          className="w-full bg-transparent border-b border-[var(--border-input)] py-1.5 text-[15px] text-[var(--text-main)] opacity-90 outline-none focus:border-[var(--border-input-focus)] transition-all placeholder-[var(--placeholder-color)]"
                           placeholder="e.g. World History, Calculus, Python Data Structures"
                         />
                       </div>
@@ -1016,7 +1052,7 @@ export default function App() {
                           <select
                             value={questionDifficulty}
                             onChange={(e) => setQuestionDifficulty(e.target.value)}
-                            className="bg-transparent border-b border-[#111111]/20 py-1.5 text-[14px] text-[#111111] opacity-90 outline-none focus:border-[#111111]/70 cursor-pointer"
+                            className="bg-transparent border-b border-[var(--border-input)] py-1.5 text-[14px] text-[var(--text-main)] opacity-90 outline-none focus:border-[var(--border-input-focus)] cursor-pointer"
                           >
                             <option value="Beginner">Beginner</option>
                             <option value="Intermediate">Intermediate</option>
@@ -1030,7 +1066,7 @@ export default function App() {
                           <select
                             value={questionCount}
                             onChange={(e) => setQuestionCount(Number(e.target.value))}
-                            className="bg-transparent border-b border-[#111111]/20 py-1.5 text-[14px] text-[#111111] opacity-90 outline-none focus:border-[#111111]/70 cursor-pointer"
+                            className="bg-transparent border-b border-[var(--border-input)] py-1.5 text-[14px] text-[var(--text-main)] opacity-90 outline-none focus:border-[var(--border-input-focus)] cursor-pointer"
                           >
                             <option value={3}>3 Questions</option>
                             <option value={5}>5 Questions</option>
@@ -1057,14 +1093,14 @@ export default function App() {
                           value={questionMaterialText}
                           onChange={(e) => setQuestionMaterialText(e.target.value)}
                           placeholder="Paste study material, notes, or chapter excerpts here..."
-                          className="w-full bg-transparent border-b border-[#111111]/20 py-1 text-[13px] text-[#111111] opacity-90 outline-none focus:border-[#111111]/70 transition-all resize-none placeholder-[#111111]/30"
+                          className="w-full bg-transparent border-b border-[var(--border-input)] py-1 text-[13px] text-[var(--text-main)] opacity-90 outline-none focus:border-[var(--border-input-focus)] transition-all resize-none placeholder-[var(--placeholder-color)]"
                         />
                       </div>
 
                       <button
                         type="submit"
                         disabled={isGeneratingQuestions}
-                        className="text-left text-[15px] font-normal text-[#111111] opacity-80 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 underline disabled:opacity-40"
+                        className="text-left text-[15px] font-normal text-[var(--text-main)] opacity-80 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 underline disabled:opacity-40"
                       >
                         {isGeneratingQuestions ? 'Generating questions...' : 'Generate Questions →'}
                       </button>
@@ -1109,7 +1145,7 @@ export default function App() {
                                       value={optionText}
                                       checked={userAns === optionText}
                                       onChange={() => setUserAnswers((prev) => ({ ...prev, [currentQ.id]: optionText }))}
-                                      className="mt-1 accent-[#111111] cursor-pointer"
+                                      className="mt-1 accent-[var(--text-main)] cursor-pointer"
                                       disabled={result?.graded}
                                     />
                                     <span>{optionText}</span>
@@ -1122,14 +1158,14 @@ export default function App() {
                                 value={userAns}
                                 onChange={(e) => setUserAnswers((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
                                 placeholder="Type your answer or conceptual summary..."
-                                className="w-full bg-transparent border-b border-[#111111]/20 py-1.5 text-[14px] text-[#111111] opacity-90 outline-none focus:border-[#111111]/70 transition-all resize-none placeholder-[#111111]/30"
+                                className="w-full bg-transparent border-b border-[var(--border-input)] py-1.5 text-[14px] text-[var(--text-main)] opacity-90 outline-none focus:border-[var(--border-input-focus)] transition-all resize-none placeholder-[var(--placeholder-color)]"
                                 disabled={result?.graded}
                                 required
                               />
                             )}
 
                             {result && (
-                              <div className="p-2.5 bg-[#dddcdc]/50 text-[12px] opacity-80 rounded-lg flex flex-col gap-1 leading-relaxed">
+                              <div className="p-2.5 bg-[var(--feedback-bg)] text-[12px] opacity-80 rounded-lg flex flex-col gap-1 leading-relaxed">
                                 <span className="font-medium">
                                   {result.isCorrect ? '✓ Correct' : '✕ Needs Review'}
                                 </span>
@@ -1163,7 +1199,7 @@ export default function App() {
                                 <button
                                   type="submit"
                                   disabled={isGradingAnswer}
-                                  className="text-[14px] font-normal text-[#111111] opacity-80 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 underline disabled:opacity-40"
+                                  className="text-[14px] font-normal text-[var(--text-main)] opacity-80 hover:opacity-100 transition-all cursor-pointer bg-transparent border-none p-0 underline disabled:opacity-40"
                                 >
                                   {isGradingAnswer ? 'Evaluating answer...' : 'Submit Answer →'}
                                 </button>
@@ -1192,7 +1228,7 @@ export default function App() {
                       const progress = q.getProgress(todayFocusSeconds, currentMultiplier, manualLogged);
 
                       return (
-                        <div key={q.id} className="flex flex-col gap-2 py-1 border-b border-[#111111]/08 pb-3">
+                        <div key={q.id} className="flex flex-col gap-2 py-1 border-b border-[var(--border-subtle)] pb-3">
                           <div className="flex justify-between items-start gap-3">
                             <div className="flex flex-col gap-0.5">
                               <span className="text-[15px] opacity-85 font-normal">{q.title}</span>
@@ -1204,7 +1240,7 @@ export default function App() {
                             ) : completed ? (
                               <button
                                 onClick={() => handleClaimQuest(q.id, q.rewardMinutes)}
-                                className="text-[13px] opacity-85 hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 shrink-0 font-medium"
+                                className="text-[13px] opacity-85 hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 shrink-0 font-medium text-[var(--text-main)]"
                               >
                                 Claim +{q.rewardMinutes}m
                               </button>
@@ -1215,9 +1251,9 @@ export default function App() {
 
                           {/* Progress Line */}
                           <div className="flex flex-col gap-1">
-                            <div className="w-full h-1.5 bg-[#111111]/10 rounded-full overflow-hidden">
+                            <div className="w-full h-1.5 bg-[var(--track-bg)] rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-[#111111] opacity-75 transition-all duration-300"
+                                className="h-full bg-[var(--track-fill)] opacity-75 transition-all duration-300"
                                 style={{ width: `${Math.round(progress.ratio * 100)}%` }}
                               />
                             </div>
@@ -1252,7 +1288,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-1.5 pt-1 border-t border-[#111111]/10">
+                  <div className="flex flex-col gap-1.5 pt-1 border-t border-[var(--border-default)]">
                     <span className="text-[12px] opacity-60 font-normal">Multiplier Breakdown</span>
                     <div className="text-[12px] opacity-50 flex justify-between">
                       <span>Base (Streak bonus):</span>
@@ -1264,7 +1300,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 pt-2 border-t border-[#111111]/10">
+                  <div className="flex flex-col gap-2 pt-2 border-t border-[var(--border-default)]">
                     <span className="text-[12px] opacity-60 font-normal">Account & Cloud Data</span>
                     {currentUser ? (
                       <div className="flex flex-col gap-1.5 text-[12px] opacity-80">
@@ -1275,13 +1311,13 @@ export default function App() {
                         <div className="flex gap-4 pt-1 opacity-75">
                           <button
                             onClick={handleSignOut}
-                            className="text-[12px] hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 text-[#111111]"
+                            className="text-[12px] hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
                           >
                             sign out
                           </button>
                           <button
                             onClick={triggerDeleteAccount}
-                            className="text-[12px] hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 text-[#111111]"
+                            className="text-[12px] hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
                           >
                             delete account
                           </button>
@@ -1292,7 +1328,7 @@ export default function App() {
                         <span className="text-[12px] opacity-50">Sync stats across devices</span>
                         <button
                           onClick={() => setShowAuthModal(true)}
-                          className="text-[12px] opacity-80 hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 font-medium"
+                          className="text-[12px] opacity-80 hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 font-medium text-[var(--text-main)]"
                         >
                           sign in
                         </button>
@@ -1306,7 +1342,7 @@ export default function App() {
               {activeScreen === 'streak' && (
                 <div className="flex flex-col gap-5 text-left">
                   <div className="flex items-center gap-3">
-                    <div className="text-[#111111] opacity-80">
+                    <div className="text-[var(--text-main)] opacity-80">
                       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z" />
                       </svg>
@@ -1322,9 +1358,9 @@ export default function App() {
                       <span>Today's Progress</span>
                       <span>{Math.min(30, Math.floor(todayFocusSeconds / 60))}/30 mins</span>
                     </div>
-                    <div className="w-full h-1.5 bg-[#111111]/10 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-[var(--track-bg)] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#111111] opacity-75 transition-all duration-300"
+                        className="h-full bg-[var(--track-fill)] opacity-75 transition-all duration-300"
                         style={{ width: `${Math.min(100, (todayFocusSeconds / 1800) * 100)}%` }}
                       />
                     </div>
@@ -1338,34 +1374,34 @@ export default function App() {
 
               {/* Screen 7: What is this? */}
               {activeScreen === 'what_is_this' && (
-                <div className="flex flex-col gap-5 text-left text-[#111111]">
+                <div className="flex flex-col gap-5 text-left text-[var(--text-main)]">
                   <p className="text-[13px] opacity-70 leading-relaxed">
                     <strong className="font-medium opacity-90">fcus</strong> is a minimalist productivity & relaxation balance app built to help you stay focused without burning out.
                   </p>
 
                   <div className="flex flex-col gap-3.5">
-                    <div className="flex flex-col gap-1 py-1.5 border-b border-[#111111]/08">
+                    <div className="flex flex-col gap-1 py-1.5 border-b border-[var(--border-subtle)]">
                       <h3 className="text-[14px] font-medium opacity-85 lowercase">1. earn relaxation time</h3>
                       <p className="text-[12px] opacity-60 leading-relaxed">
                         Switch to <strong className="font-medium opacity-75">Work Mode</strong> and lock in. At the standard rate (1x), you earn 1 minute of free time for every 5 minutes focused. The longer you focus without stopping, the higher your session multiplier grows (up to 2.5x with up to +1.5x bonus), accumulating free relaxation time faster.
                       </p>
                     </div>
 
-                    <div className="flex flex-col gap-1 py-1.5 border-b border-[#111111]/08">
+                    <div className="flex flex-col gap-1 py-1.5 border-b border-[var(--border-subtle)]">
                       <h3 className="text-[14px] font-medium opacity-85 lowercase">2. record productive work</h3>
                       <p className="text-[12px] opacity-60 leading-relaxed">
                         Completed productive work offline or elsewhere? Describe what you accomplished in <strong className="font-medium opacity-75">Record Work Time</strong> to get evaluated and credited with earned relaxation time.
                       </p>
                     </div>
 
-                    <div className="flex flex-col gap-1 py-1.5 border-b border-[#111111]/08">
+                    <div className="flex flex-col gap-1 py-1.5 border-b border-[var(--border-subtle)]">
                       <h3 className="text-[14px] font-medium opacity-85 lowercase">3. test your knowledge</h3>
                       <p className="text-[12px] opacity-60 leading-relaxed">
                         Generate practice questions on any topic in <strong className="font-medium opacity-75">Answer Questions</strong>. Solve them correctly to earn bonus relaxation minutes.
                       </p>
                     </div>
 
-                    <div className="flex flex-col gap-1 py-1.5 border-b border-[#111111]/08">
+                    <div className="flex flex-col gap-1 py-1.5 border-b border-[var(--border-subtle)]">
                       <h3 className="text-[14px] font-medium opacity-85 lowercase">4. enjoy guilt-free breaks</h3>
                       <p className="text-[12px] opacity-60 leading-relaxed">
                         Switch to <strong className="font-medium opacity-75">Relax Mode</strong> to spend your earned balance. When your free time runs out, it's time to lock back in!
@@ -1383,19 +1419,19 @@ export default function App() {
         /* MAIN TIMER & BENTO GRID SCREEN */
         <>
           {/* SECTION 1: TIMER PAGE */}
-          <section className="min-h-screen w-full flex flex-col justify-between items-center select-none px-8 py-10 md:px-16 md:py-14 relative overflow-hidden">
+          <section className="min-h-screen w-full flex flex-col justify-between items-center select-none px-8 py-10 md:px-16 md:py-14 relative overflow-hidden bg-[var(--bg-main)]">
             {/* Top Header Bar */}
             <header className="w-full max-w-7xl flex justify-between items-center z-10">
               <button
                 onClick={() => setActiveScreen('settings')}
-                className="text-[18px] font-normal lowercase tracking-normal text-[#111111] opacity-50 hover:opacity-85 hover:scale-105 active:scale-95 transition-all duration-200 select-none cursor-pointer bg-transparent border-none p-0 outline-none"
+                className="text-[18px] font-normal lowercase tracking-normal text-[var(--text-main)] opacity-50 hover:opacity-85 hover:scale-105 active:scale-95 transition-all duration-200 select-none cursor-pointer bg-transparent border-none p-0 outline-none"
                 id="settings-text"
               >
                 settings
               </button>
 
               <h1
-                className="text-[28px] font-bold lowercase tracking-normal text-[#111111] opacity-70 select-none"
+                className="text-[28px] font-bold lowercase tracking-normal text-[var(--text-main)] opacity-70 select-none"
                 id="logo-title"
               >
                 fcus
@@ -1403,7 +1439,7 @@ export default function App() {
 
               <button
                 onClick={toggleMode}
-                className="text-[18px] font-normal lowercase tracking-normal text-[#111111] opacity-50 hover:opacity-85 hover:scale-105 active:scale-95 transition-all duration-200 select-none cursor-pointer bg-transparent border-none p-0 outline-none"
+                className="text-[18px] font-normal lowercase tracking-normal text-[var(--text-main)] opacity-50 hover:opacity-85 hover:scale-105 active:scale-95 transition-all duration-200 select-none cursor-pointer bg-transparent border-none p-0 outline-none"
                 id="work-text"
                 title="Click to switch between work & relax"
               >
@@ -1417,7 +1453,7 @@ export default function App() {
                 <>
                   {/* Subtitle */}
                   <p
-                    className="text-[35.1px] font-normal lowercase tracking-normal text-[#111111] opacity-75 leading-none select-none"
+                    className="text-[35.1px] font-normal lowercase tracking-normal text-[var(--text-main)] opacity-75 leading-none select-none"
                     id="timer-subtitle"
                   >
                     free time remaining
@@ -1425,7 +1461,7 @@ export default function App() {
 
                   {/* Timer Digits */}
                   <div
-                    className="text-[76.7px] font-normal tracking-tight text-[#111111] opacity-85 leading-none select-none"
+                    className="text-[76.7px] font-normal tracking-tight text-[var(--text-main)] opacity-85 leading-none select-none"
                     id="timer-display"
                   >
                     {formatTime(secondsLeft)}
@@ -1435,7 +1471,7 @@ export default function App() {
                 <>
                   {/* Subtitle for Work Mode */}
                   <p
-                    className="text-[35.1px] font-normal lowercase tracking-normal text-[#111111] opacity-75 leading-none select-none"
+                    className="text-[35.1px] font-normal lowercase tracking-normal text-[var(--text-main)] opacity-75 leading-none select-none"
                     id="timer-subtitle"
                   >
                     locking in on work
@@ -1443,14 +1479,14 @@ export default function App() {
 
                   {/* Work Timer Digits */}
                   <div
-                    className="text-[76.7px] font-normal tracking-tight text-[#111111] opacity-85 leading-none select-none"
+                    className="text-[76.7px] font-normal tracking-tight text-[var(--text-main)] opacity-85 leading-none select-none"
                     id="timer-display"
                   >
                     {formatTime(workSeconds)}
                   </div>
 
                   {/* Earned Free Time & Multiplier Tracker */}
-                  <p className="text-[16px] md:text-[18px] font-normal text-[#111111] opacity-60 lowercase tracking-normal leading-none select-none">
+                  <p className="text-[16px] md:text-[18px] font-normal text-[var(--text-main)] opacity-60 lowercase tracking-normal leading-none select-none">
                     earned: {formatEarnedTime(sessionEarnedSeconds)} | multiplier {formatMultiplier(currentMultiplier)}
                   </p>
                 </>
@@ -1459,40 +1495,48 @@ export default function App() {
               {/* Minimal Control Button */}
               <button
                 onClick={togglePlay}
-                className="w-[44px] h-[44px] rounded-full border border-[#111111] opacity-60 hover:opacity-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer bg-transparent outline-none"
+                className="w-[44px] h-[44px] rounded-full border border-[var(--text-main)] opacity-60 hover:opacity-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer bg-transparent outline-none"
                 aria-label={isRunning ? 'Pause' : 'Start'}
                 title={isRunning ? 'Pause' : 'Start'}
                 id="timer-control-btn"
               >
                 {isRunning ? (
                   // Minimal Pause Icon (||)
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[#111111]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--text-main)]">
                     <rect x="6.5" y="4" width="3" height="16" rx="0.5" />
                     <rect x="14.5" y="4" width="3" height="16" rx="0.5" />
                   </svg>
                 ) : (
                   // Minimal Play Icon (▶)
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[#111111] translate-x-[1px]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--text-main)] translate-x-[1px]">
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 )}
               </button>
             </main>
 
-            {/* Bottom spacer / What is this link right at the bottom of the fold */}
-            <footer className="w-full py-2 flex justify-center items-center z-10 shrink-0">
+            {/* Bottom spacer / What is this & Theme toggle right at the bottom of the fold */}
+            <footer className="w-full py-2 flex justify-center items-center gap-3.5 z-10 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveScreen('what_is_this')}
-                className="text-[12px] font-normal underline text-[#111111] opacity-40 hover:opacity-80 transition-all cursor-pointer bg-transparent border-none p-0 outline-none"
+                className="text-[12px] font-normal underline text-[var(--text-main)] opacity-40 hover:opacity-80 transition-all cursor-pointer bg-transparent border-none p-0 outline-none"
               >
                 what is this?
+              </button>
+              <span className="text-[12px] opacity-25">·</span>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="text-[12px] font-normal underline text-[var(--text-main)] opacity-40 hover:opacity-80 transition-all cursor-pointer bg-transparent border-none p-0 outline-none"
+              >
+                {theme === 'dark' ? 'light mode' : 'dark mode'}
               </button>
             </footer>
           </section>
 
           {/* SECTION 2: BENTO GRID PAGE */}
-          <section className="min-h-screen w-full flex flex-col items-center justify-center py-12 px-6 sm:px-12 md:px-16 bg-[#fafafa] select-none relative">
+          <section className="min-h-screen w-full flex flex-col items-center justify-center py-12 px-6 sm:px-12 md:px-16 bg-[var(--bg-main)] select-none relative">
             <div className="w-full max-w-[1100px] grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch relative">
               
               {/* Left Column Group (8 of 12 cols) */}
@@ -1504,15 +1548,15 @@ export default function App() {
                   {/* Box 1: Record your own work time */}
                   <div
                     onClick={() => setActiveScreen('record')}
-                    className="sm:col-span-5 bg-[#dddcdc] rounded-[28px] p-7 h-[220px] relative overflow-hidden flex flex-col justify-start hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
+                    className="sm:col-span-5 bg-[var(--bento-box)] rounded-[28px] p-7 h-[220px] relative overflow-hidden flex flex-col justify-start hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
                     id="bento-box-1"
                   >
                     <div className="flex flex-col items-start text-left relative z-20 max-w-[200px] space-y-2">
-                      <h2 className="text-[24px] font-normal leading-[1.15] text-[#111111] opacity-70">
+                      <h2 className="text-[24px] font-normal leading-[1.15] text-[var(--text-main)] opacity-70">
                         Record your own work time
                       </h2>
 
-                      <p className="text-[12px] font-normal leading-[1.3] text-[#111111] opacity-60">
+                      <p className="text-[12px] font-normal leading-[1.3] text-[var(--text-main)] opacity-60">
                         Record anything productive you've done and you'll get time to relax for it
                       </p>
                     </div>
@@ -1521,14 +1565,14 @@ export default function App() {
                   {/* Box 2: Answer questions */}
                   <div
                     onClick={() => setActiveScreen('questions')}
-                    className="sm:col-span-7 bg-[#dddcdc] rounded-[28px] p-7 h-[220px] relative overflow-hidden flex flex-col justify-between hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
+                    className="sm:col-span-7 bg-[var(--bento-box)] rounded-[28px] p-7 h-[220px] relative overflow-hidden flex flex-col justify-between hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
                     id="bento-box-2"
                   >
-                    <h2 className="text-[24px] font-normal leading-[1.15] text-[#111111] opacity-70 relative z-20 max-w-[160px] text-left">
+                    <h2 className="text-[24px] font-normal leading-[1.15] text-[var(--text-main)] opacity-70 relative z-20 max-w-[160px] text-left">
                       Answer questions
                     </h2>
 
-                    <p className="text-[12px] font-normal leading-[1.3] text-[#111111] opacity-60 text-right relative z-20 self-end max-w-[185px]">
+                    <p className="text-[12px] font-normal leading-[1.3] text-[var(--text-main)] opacity-60 text-right relative z-20 self-end max-w-[185px]">
                       Answer generated questions to prep for anything for relaxation time
                     </p>
                   </div>
@@ -1544,15 +1588,15 @@ export default function App() {
                       setIsRunning(true);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="sm:col-span-7 bg-[#dddcdc] rounded-[28px] p-7 h-[220px] relative overflow-hidden flex flex-col items-end justify-start text-right hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
+                    className="sm:col-span-7 bg-[var(--bento-box)] rounded-[28px] p-7 h-[220px] relative overflow-hidden flex flex-col items-end justify-start text-right hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
                     id="bento-box-4"
                   >
                     <div className="flex flex-col items-end text-right relative z-20 max-w-[210px] space-y-2">
-                      <h2 className="text-[24px] font-normal leading-[1.15] text-[#111111] opacity-70">
+                      <h2 className="text-[24px] font-normal leading-[1.15] text-[var(--text-main)] opacity-70">
                         Work timer
                       </h2>
 
-                      <p className="text-[12px] font-normal leading-[1.3] text-[#111111] opacity-60">
+                      <p className="text-[12px] font-normal leading-[1.3] text-[var(--text-main)] opacity-60">
                         Use a customizable work timer to finish up any leftover things while racking up multipliers
                       </p>
                     </div>
@@ -1561,19 +1605,19 @@ export default function App() {
                   {/* Box 5: Quests */}
                   <div
                     onClick={() => setActiveScreen('quests')}
-                    className="sm:col-span-5 bg-[#dddcdc] rounded-[28px] p-7 h-[220px] relative overflow-hidden flex flex-col items-end justify-start text-right hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
+                    className="sm:col-span-5 bg-[var(--bento-box)] rounded-[28px] p-7 h-[220px] relative overflow-hidden flex flex-col items-end justify-start text-right hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
                     id="bento-box-5"
                   >
                     <div className="flex flex-col items-end text-right relative z-20 space-y-1.5 max-w-[180px]">
-                      <h2 className="text-[24px] font-normal leading-[1.15] text-[#111111] opacity-70">
+                      <h2 className="text-[24px] font-normal leading-[1.15] text-[var(--text-main)] opacity-70">
                         Quests
                       </h2>
 
-                      <p className="text-[12px] font-normal leading-[1.3] text-[#111111] opacity-60">
+                      <p className="text-[12px] font-normal leading-[1.3] text-[var(--text-main)] opacity-60">
                         Complete objectives and goals to gain bonuses and extra time
                       </p>
                       
-                      <span className="text-[12px] font-normal text-[#111111] opacity-70 pt-0.5">
+                      <span className="text-[12px] font-normal text-[var(--text-main)] opacity-70 pt-0.5">
                         {completedQuestsCount}/3 completed
                       </span>
                     </div>
@@ -1588,15 +1632,15 @@ export default function App() {
                 {/* Box 3: You (Upper Right) */}
                 <div
                   onClick={() => setActiveScreen('you')}
-                  className="bg-[#dddcdc] rounded-[28px] p-7 flex-1 min-h-[300px] relative overflow-hidden flex flex-col justify-start items-end text-right hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
+                  className="bg-[var(--bento-box)] rounded-[28px] p-7 flex-1 min-h-[300px] relative overflow-hidden flex flex-col justify-start items-end text-right hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
                   id="bento-box-3"
                 >
                   <div className="flex flex-col items-end text-right relative z-20 max-w-[160px] space-y-2">
-                    <h2 className="text-[24px] font-normal leading-[1.15] text-[#111111] opacity-70">
+                    <h2 className="text-[24px] font-normal leading-[1.15] text-[var(--text-main)] opacity-70">
                       You
                     </h2>
 
-                    <p className="text-[12px] font-normal leading-[1.3] text-[#111111] opacity-60">
+                    <p className="text-[12px] font-normal leading-[1.3] text-[var(--text-main)] opacity-60">
                       Track your progress, accomplishments, stats and change settings
                     </p>
                   </div>
@@ -1605,10 +1649,10 @@ export default function App() {
                 {/* Box 6: Streak */}
                 <div
                   onClick={() => setActiveScreen('streak')}
-                  className="bg-[#dddcdc] rounded-[28px] p-7 h-[140px] relative overflow-hidden flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
+                  className="bg-[var(--bento-box)] rounded-[28px] p-7 h-[140px] relative overflow-hidden flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
                   id="bento-box-6"
                 >
-                  <div className="flex items-center justify-center gap-2.5 text-[#111111] opacity-70">
+                  <div className="flex items-center justify-center gap-2.5 text-[var(--text-main)] opacity-70">
                     <svg
                       width="26"
                       height="26"
@@ -1643,14 +1687,14 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="fixed inset-0 z-50 bg-[#111111]/10 backdrop-blur-[2px] flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-[var(--modal-overlay)] backdrop-blur-[2px] flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 6 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full max-w-[350px] bg-[#fafafa] rounded-2xl p-6 flex flex-col gap-4 text-left text-[#111111]"
+              className="w-full max-w-[350px] bg-[var(--modal-bg)] rounded-2xl p-6 flex flex-col gap-4 text-left text-[var(--text-main)]"
             >
               <div className="flex justify-between items-center">
                 <h3 className="text-[17px] font-normal lowercase opacity-80">
@@ -1661,7 +1705,7 @@ export default function App() {
                     setShowAuthModal(false);
                     setAuthError(null);
                   }}
-                  className="text-[15px] opacity-35 hover:opacity-75 transition-all cursor-pointer bg-transparent border-none p-0"
+                  className="text-[15px] opacity-35 hover:opacity-75 transition-all cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
                 >
                   ✕
                 </button>
@@ -1671,7 +1715,7 @@ export default function App() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isSubmittingAuth}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#f2f1ec] hover:bg-[#ebe9e2] text-[13px] text-[#111111] opacity-85 hover:opacity-100 transition-all cursor-pointer font-medium flex items-center justify-center gap-2.5 border-none"
+                className="w-full py-2.5 px-4 rounded-xl bg-[var(--btn-secondary)] hover:bg-[var(--btn-secondary-hover)] text-[13px] text-[var(--text-main)] opacity-85 hover:opacity-100 transition-all cursor-pointer font-medium flex items-center justify-center gap-2.5 border-none"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
@@ -1683,9 +1727,9 @@ export default function App() {
               </button>
 
               <div className="flex items-center gap-3 opacity-25 text-[11px] my-0.5">
-                <div className="h-[1px] bg-[#111111]/08 flex-1" />
+                <div className="h-[1px] bg-[var(--border-subtle)] flex-1" />
                 <span>or email</span>
-                <div className="h-[1px] bg-[#111111]/08 flex-1" />
+                <div className="h-[1px] bg-[var(--border-subtle)] flex-1" />
               </div>
 
               <form onSubmit={handleEmailAuth} className="flex flex-col gap-3.5">
@@ -1697,7 +1741,7 @@ export default function App() {
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full bg-transparent border-b border-[#111111]/10 py-1 text-[13px] text-[#111111] opacity-90 outline-none focus:border-[#111111]/30 transition-all placeholder-[#111111]/25"
+                    className="w-full bg-transparent border-b border-[var(--border-default)] py-1 text-[13px] text-[var(--text-main)] opacity-90 outline-none focus:border-[var(--border-input-focus)] transition-all placeholder-[var(--placeholder-color)]"
                   />
                 </div>
 
@@ -1709,18 +1753,18 @@ export default function App() {
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-transparent border-b border-[#111111]/10 py-1 text-[13px] text-[#111111] opacity-90 outline-none focus:border-[#111111]/30 transition-all placeholder-[#111111]/25"
+                    className="w-full bg-transparent border-b border-[var(--border-default)] py-1 text-[13px] text-[var(--text-main)] opacity-90 outline-none focus:border-[var(--border-input-focus)] transition-all placeholder-[var(--placeholder-color)]"
                   />
                 </div>
 
                 {authError && (
-                  <p className="text-[12px] text-red-600 opacity-80 pt-0.5 leading-snug">{authError}</p>
+                  <p className="text-[12px] text-red-500 opacity-90 pt-0.5 leading-snug">{authError}</p>
                 )}
 
                 <button
                   type="submit"
                   disabled={isSubmittingAuth}
-                  className="mt-1 text-left text-[13px] font-normal text-[#111111] opacity-75 hover:opacity-100 transition-all cursor-pointer underline disabled:opacity-40"
+                  className="mt-1 text-left text-[13px] font-normal text-[var(--text-main)] opacity-75 hover:opacity-100 transition-all cursor-pointer underline disabled:opacity-40"
                 >
                   {isSubmittingAuth ? 'Processing...' : authIsSignUp ? 'Create Account →' : 'Sign In →'}
                 </button>
@@ -1734,7 +1778,7 @@ export default function App() {
                     setAuthIsSignUp(!authIsSignUp);
                     setAuthError(null);
                   }}
-                  className="underline cursor-pointer hover:opacity-100 bg-transparent border-none p-0 text-[#111111]"
+                  className="underline cursor-pointer hover:opacity-100 bg-transparent border-none p-0 text-[var(--text-main)]"
                 >
                   {authIsSignUp ? 'Sign in' : 'Create account'}
                 </button>
@@ -1752,14 +1796,14 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="fixed inset-0 z-50 bg-[#111111]/10 backdrop-blur-[2px] flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-[var(--modal-overlay)] backdrop-blur-[2px] flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 6 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full max-w-[340px] bg-[#fafafa] rounded-2xl p-6 flex flex-col gap-4 text-left text-[#111111]"
+              className="w-full max-w-[340px] bg-[var(--modal-bg)] rounded-2xl p-6 flex flex-col gap-4 text-left text-[var(--text-main)]"
             >
               <h3 className="text-[16px] font-normal lowercase opacity-85">
                 {confirmModal.title}
@@ -1771,14 +1815,14 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setConfirmModal(null)}
-                  className="text-[12px] opacity-50 hover:opacity-90 transition-all cursor-pointer underline bg-transparent border-none p-0"
+                  className="text-[12px] opacity-50 hover:opacity-90 transition-all cursor-pointer underline bg-transparent border-none p-0 text-[var(--text-main)]"
                 >
                   cancel
                 </button>
                 <button
                   type="button"
                   onClick={executeConfirmedAction}
-                  className="px-3.5 py-1.5 rounded-lg bg-[#111111]/90 hover:bg-[#111111] text-[#fafafa] text-[12px] font-medium transition-all cursor-pointer border-none"
+                  className="px-3.5 py-1.5 rounded-lg bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] text-[var(--btn-primary-text)] text-[12px] font-medium transition-all cursor-pointer border-none"
                 >
                   {confirmModal.actionLabel}
                 </button>

@@ -2,11 +2,63 @@
 @import url('https://fonts.cdnfonts.com/css/open-sauce-one');
 @import "tailwindcss";
 
+:root {
+  --bg-main: #fafafa;
+  --text-main: #111111;
+  --bento-box: #dddcdc;
+  --toast-bg: #efeeea;
+  --modal-bg: #fafafa;
+  --btn-secondary: #f2f1ec;
+  --btn-secondary-hover: #ebe9e2;
+  --feedback-bg: rgba(221, 220, 220, 0.5);
+  --border-default: rgba(17, 17, 17, 0.1);
+  --border-subtle: rgba(17, 17, 17, 0.08);
+  --border-input: rgba(17, 17, 17, 0.2);
+  --border-input-focus: rgba(17, 17, 17, 0.7);
+  --placeholder-color: rgba(17, 17, 17, 0.3);
+  --modal-overlay: rgba(17, 17, 17, 0.15);
+  --btn-primary-bg: rgba(17, 17, 17, 0.9);
+  --btn-primary-hover: #111111;
+  --btn-primary-text: #fafafa;
+  --track-bg: rgba(17, 17, 17, 0.1);
+  --track-fill: #111111;
+  color-scheme: light;
+}
+
+[data-theme="dark"],
+.dark {
+  --bg-main: #111111;
+  --text-main: #f0f0ee;
+  --bento-box: #1e1e1e;
+  --toast-bg: #222222;
+  --modal-bg: #181818;
+  --btn-secondary: #262626;
+  --btn-secondary-hover: #303030;
+  --feedback-bg: rgba(36, 36, 36, 0.75);
+  --border-default: rgba(240, 240, 238, 0.1);
+  --border-subtle: rgba(240, 240, 238, 0.08);
+  --border-input: rgba(240, 240, 238, 0.2);
+  --border-input-focus: rgba(240, 240, 238, 0.7);
+  --placeholder-color: rgba(240, 240, 238, 0.3);
+  --modal-overlay: rgba(0, 0, 0, 0.65);
+  --btn-primary-bg: #f0f0ee;
+  --btn-primary-hover: #ffffff;
+  --btn-primary-text: #111111;
+  --track-bg: rgba(240, 240, 238, 0.12);
+  --track-fill: #f0f0ee;
+  color-scheme: dark;
+}
+
 @layer base {
   body {
     font-family: 'Open Sauce Sans', 'Open Sauce One', 'Open Sauce', system-ui, -apple-system, sans-serif;
-    background-color: #fafafa;
-    color: #111111;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  ::selection {
+    background-color: var(--text-main);
+    color: var(--bg-main);
   }
 }
-

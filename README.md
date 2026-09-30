@@ -27,7 +27,7 @@ live demo @ [fcusapp.ai.studio](https://fcusapp.ai.studio)
   - cloud persistence with firebase auth (google sign-in & email) and firestore.
   - works completely offline in guest mode right out of the box.
 - 🎨 **cozy minimalist design & sound**:
-  - minimalist ui/ux designed with love.
+  - minimalist ui/ux with soothing dark and light color modes.
   - soft chimes when sessions finish or milestones are reached.
 
 ---
