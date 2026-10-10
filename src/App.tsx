@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, ChangeEvent, MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   auth,
@@ -18,7 +18,18 @@ import {
   User
 } from './lib/firebase';
 
-type ScreenType = 'settings' | 'record' | 'questions' | 'quests' | 'you' | 'streak' | 'what_is_this' | null;
+type ScreenType = 'settings' | 'record' | 'questions' | 'quests' | 'you' | 'streak' | 'what_is_this' | 'todos' | null;
+
+interface TodoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  rewardMinutes: number;
+  rewarded?: boolean;
+  createdAt: number;
+}
+
+const DEFAULT_TODOS: TodoItem[] = [];
 
 interface Quest {
   id: string;
@@ -199,6 +210,28 @@ export default function App() {
   // Notification Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // To-do list state
+  const [todos, setTodos] = useState<TodoItem[]>(() => {
+    const saved = localStorage.getItem('fcus_todos');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Remove legacy dummy placeholder tasks if present
+          return parsed.filter((t: any) => t && t.id !== '1' && t.id !== '2' && t.id !== '3');
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  });
+  const [newTodoText, setNewTodoText] = useState<string>('');
+
+  useEffect(() => {
+    localStorage.setItem('fcus_todos', JSON.stringify(todos));
+  }, [todos]);
+
   // Firebase Auth & Cloud Sync States
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
@@ -241,6 +274,7 @@ export default function App() {
               if (typeof data.todayCredited === 'boolean') setTodayCredited(data.todayCredited);
               if (typeof data.manualLogged === 'boolean') setManualLogged(data.manualLogged);
               if (Array.isArray(data.claimedQuests)) setClaimedQuests(data.claimedQuests);
+              if (Array.isArray(data.todos)) setTodos(data.todos);
               showToast(`Signed in as ${user.email || user.displayName || 'user'}`);
             }
           } else {
@@ -257,6 +291,7 @@ export default function App() {
               todayCredited,
               manualLogged,
               claimedQuests,
+              todos,
               lastDate: today,
               updatedAt: new Date().toISOString(),
             });
@@ -291,6 +326,7 @@ export default function App() {
             todayCredited,
             manualLogged,
             claimedQuests,
+            todos,
             lastDate: today,
             updatedAt: new Date().toISOString(),
           },
@@ -302,7 +338,7 @@ export default function App() {
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, [currentUser, secondsLeft, workSeconds, streak, todayFocusSeconds, todayCredited, manualLogged, claimedQuests]);
+  }, [currentUser, secondsLeft, workSeconds, streak, todayFocusSeconds, todayCredited, manualLogged, claimedQuests, todos]);
 
   // Sound chime helper
   const playChime = () => {
@@ -726,6 +762,7 @@ export default function App() {
       setManualLogged(false);
       setContinuousSeconds(0);
       setSessionEarnedSeconds(0);
+      setTodos(DEFAULT_TODOS);
 
       if (currentUser) {
         try {
@@ -740,6 +777,7 @@ export default function App() {
               todayCredited: false,
               manualLogged: false,
               claimedQuests: [],
+              todos: DEFAULT_TODOS,
               lastDate: today,
               updatedAt: new Date().toISOString(),
             },
@@ -766,6 +804,7 @@ export default function App() {
         setTodayCredited(false);
         setClaimedQuests([]);
         setManualLogged(false);
+        setTodos(DEFAULT_TODOS);
         showToast("Account and cloud data deleted");
       } catch (err: any) {
         showToast(err.message || "Delete failed. Re-authenticating may be required.");
@@ -895,6 +934,57 @@ export default function App() {
     q.isCompleted(todayFocusSeconds, currentMultiplier, manualLogged)
   ).length;
 
+  // To-do handlers
+  const toggleTodo = (id: string, e?: MouseEvent) => {
+    if (e) e.stopPropagation();
+    setTodos((prev) =>
+      prev.map((todo) => {
+        if (todo.id !== id) return todo;
+        const willBeCompleted = !todo.completed;
+        if (willBeCompleted && !todo.rewarded) {
+          const earnedMinutes = todo.rewardMinutes || 3;
+          const earnedSeconds = Math.round(earnedMinutes * 60 * currentMultiplier);
+          const earnedMins = Math.round(earnedSeconds / 60);
+
+          setSecondsLeft((s) => s + earnedSeconds);
+          playChime();
+          showToast(`Task completed! +${earnedMins}m free time earned`);
+          return { ...todo, completed: true, rewarded: true };
+        }
+        return { ...todo, completed: willBeCompleted };
+      })
+    );
+  };
+
+  const handleAddTodo = (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = newTodoText.trim();
+    if (!trimmed) return;
+    const newTodo: TodoItem = {
+      id: `todo_${Date.now()}`,
+      text: trimmed,
+      completed: false,
+      rewardMinutes: 3,
+      rewarded: false,
+      createdAt: Date.now(),
+    };
+    setTodos((prev) => [newTodo, ...prev]);
+    setNewTodoText('');
+    showToast('Task added (+3m on completion)');
+  };
+
+  const handleDeleteTodo = (id: string, e?: MouseEvent) => {
+    if (e) e.stopPropagation();
+    setTodos((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleClearCompletedTodos = () => {
+    setTodos((prev) => prev.filter((t) => !t.completed));
+    showToast('Cleared completed tasks');
+  };
+
+  const completedTodosCount = todos.filter((t) => t.completed).length;
+
   return (
     <div className="w-full min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] font-['Open_Sauce_Sans','Open_Sauce_One','Open_Sauce',sans-serif] transition-colors duration-200">
       {/* Toast Notification */}
@@ -942,6 +1032,7 @@ export default function App() {
               {activeScreen === 'you' && 'your statistics'}
               {activeScreen === 'streak' && 'streak progress'}
               {activeScreen === 'what_is_this' && 'what is this?'}
+              {activeScreen === 'todos' && 'to-do list'}
             </h2>
 
             <div className="w-full flex flex-col gap-5">
@@ -1407,7 +1498,114 @@ export default function App() {
                         Switch to <strong className="font-medium opacity-75">Relax Mode</strong> to spend your earned balance. When your free time runs out, it's time to lock back in!
                       </p>
                     </div>
+
+                    <div className="flex flex-col gap-1 py-1.5 border-b border-[var(--border-subtle)]">
+                      <h3 className="text-[14px] font-medium opacity-85 lowercase">5. check off to-do tasks</h3>
+                      <p className="text-[12px] opacity-60 leading-relaxed">
+                        Track daily goals in <strong className="font-medium opacity-75">To-do List</strong>. Each completed task banks <strong className="font-medium opacity-75">+3 minutes</strong> of free relaxation time (amplified by your current multiplier) to reward daily consistency.
+                      </p>
+                    </div>
                   </div>
+                </div>
+              )}
+
+              {/* Screen 8: To-do List */}
+              {activeScreen === 'todos' && (
+                <div className="flex flex-col gap-5 text-left">
+                  <p className="text-[13px] opacity-60 leading-relaxed">
+                    Stay on top of your daily priorities. Completing a task awards <strong className="font-medium opacity-85">+3 minutes</strong> of free relaxation time (scaled by your current {formatMultiplier(currentMultiplier)} multiplier).
+                  </p>
+
+                  {/* Add task form */}
+                  <form onSubmit={handleAddTodo} className="flex gap-3 items-center border-b border-[var(--border-input)] pb-1.5 focus-within:border-[var(--border-input-focus)] transition-all">
+                    <input
+                      type="text"
+                      value={newTodoText}
+                      onChange={(e) => setNewTodoText(e.target.value)}
+                      placeholder="add a new task to conquer..."
+                      className="flex-1 bg-transparent py-1 text-[14px] text-[var(--text-main)] opacity-90 outline-none placeholder-[var(--placeholder-color)]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newTodoText.trim()}
+                      className="text-[13px] opacity-75 hover:opacity-100 transition-all cursor-pointer underline disabled:opacity-30 shrink-0 bg-transparent border-none p-0 text-[var(--text-main)]"
+                    >
+                      add task +
+                    </button>
+                  </form>
+
+                  {/* Task list */}
+                  <div className="flex flex-col gap-1.5 pt-1 max-h-[340px] overflow-y-auto pr-1">
+                    {todos.length === 0 ? (
+                      <p className="text-[13px] opacity-40 italic py-6 text-center">
+                        no tasks yet. add one above to earn relaxation time!
+                      </p>
+                    ) : (
+                      todos.map((todo) => {
+                        const rewardMins = Math.round((todo.rewardMinutes || 3) * currentMultiplier);
+                        return (
+                          <div
+                            key={todo.id}
+                            className="flex items-center justify-between gap-3 py-2 px-1 border-b border-[var(--border-subtle)] group"
+                          >
+                            <div
+                              onClick={(e) => toggleTodo(todo.id, e)}
+                              className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full border border-[var(--border-input-focus)] flex items-center justify-center shrink-0 transition-all ${
+                                  todo.completed
+                                    ? 'bg-[var(--track-fill)] text-[var(--bg-main)] border-transparent'
+                                    : 'hover:border-[var(--text-main)]'
+                                }`}
+                              >
+                                {todo.completed && <span className="text-[10px] font-bold">✓</span>}
+                              </div>
+                              <span
+                                className={`text-[14px] leading-snug break-words ${
+                                  todo.completed ? 'line-through opacity-40' : 'opacity-85'
+                                }`}
+                              >
+                                {todo.text}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-[11px] opacity-45">
+                                {todo.completed ? 'earned' : `+${rewardMins}m`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteTodo(todo.id, e)}
+                                className="text-[13px] opacity-25 hover:opacity-80 transition-all cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
+                                title="Delete task"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Bottom summary / clear completed */}
+                  {todos.length > 0 && (
+                    <div className="flex justify-between items-center text-[12px] opacity-50 pt-1">
+                      <span>
+                        {completedTodosCount} of {todos.length} completed
+                      </span>
+                      {todos.some((t) => t.completed) && (
+                        <button
+                          type="button"
+                          onClick={handleClearCompletedTodos}
+                          className="underline cursor-pointer hover:opacity-100 bg-transparent border-none p-0 text-[var(--text-main)]"
+                        >
+                          clear completed
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1578,7 +1776,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Bottom Row: Box 4 & Box 5 */}
+                {/* Middle Row: Box 4 & Box 5 */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
                   
                   {/* Box 4: Work timer */}
@@ -1624,6 +1822,63 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Bottom Row: Box 7 (To-do list) */}
+                <div
+                  onClick={() => setActiveScreen('todos')}
+                  className="bg-[var(--bento-box)] rounded-[28px] p-7 min-h-[175px] relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
+                  id="bento-box-7"
+                >
+                  <div className="flex flex-col items-start text-left relative z-20 max-w-[240px] space-y-1.5">
+                    <h2 className="text-[24px] font-normal leading-[1.15] text-[var(--text-main)] opacity-70">
+                      To-do list
+                    </h2>
+
+                    <p className="text-[12px] font-normal leading-[1.3] text-[var(--text-main)] opacity-60">
+                      Finish tasks to stay on track and earn relaxation time (+3m each)
+                    </p>
+
+                    <span className="text-[12px] font-normal text-[var(--text-main)] opacity-70 pt-0.5">
+                      {todos.length === 0 ? 'no tasks yet' : `${completedTodosCount}/${todos.length} completed`}
+                    </span>
+                  </div>
+
+                  {/* Task list preview */}
+                  <div className="w-full sm:max-w-[320px] flex flex-col gap-1.5 relative z-20 text-left">
+                    {todos.slice(0, 3).map((todo) => (
+                      <div
+                        key={todo.id}
+                        onClick={(e) => toggleTodo(todo.id, e)}
+                        className="flex items-center justify-between gap-2.5 text-[13px] py-1 px-2.5 rounded-lg hover:bg-[var(--text-main)]/5 transition-all cursor-pointer group"
+                        title={todo.completed ? 'Mark incomplete' : 'Complete task (+3m)'}
+                      >
+                        <div className="flex items-center gap-2.5 truncate min-w-0">
+                          <span
+                            className={`w-3.5 h-3.5 rounded-full border border-[var(--text-main)]/40 flex items-center justify-center shrink-0 text-[9px] font-bold transition-all ${
+                              todo.completed
+                                ? 'bg-[var(--track-fill)] text-[var(--bg-main)] border-transparent'
+                                : 'group-hover:border-[var(--text-main)]/80'
+                            }`}
+                          >
+                            {todo.completed && '✓'}
+                          </span>
+                          <span className={`truncate text-[13px] ${todo.completed ? 'line-through opacity-40' : 'opacity-85'}`}>
+                            {todo.text}
+                          </span>
+                        </div>
+                        <span className="text-[11px] opacity-40 shrink-0 font-mono">
+                          +{Math.round((todo.rewardMinutes || 3) * currentMultiplier)}m
+                        </span>
+                      </div>
+                    ))}
+                    {todos.length === 0 && (
+                      <div className="flex flex-col sm:items-end text-left sm:text-right gap-0.5 opacity-60">
+                        <span className="text-[13px] font-normal opacity-85 underline">+ add a task</span>
+                        <span className="text-[11px] opacity-60">earn +3m per completed task</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
               </div>
 
               {/* Right Column Group (4 of 12 cols) */}
@@ -1632,7 +1887,7 @@ export default function App() {
                 {/* Box 3: You (Upper Right) */}
                 <div
                   onClick={() => setActiveScreen('you')}
-                  className="bg-[var(--bento-box)] rounded-[28px] p-7 flex-1 min-h-[300px] relative overflow-hidden flex flex-col justify-start items-end text-right hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
+                  className="bg-[var(--bento-box)] rounded-[28px] p-7 flex-1 min-h-[300px] relative overflow-hidden flex flex-col justify-between items-end text-right hover:scale-105 active:scale-95 transition-all duration-300 ease-out cursor-pointer hover:shadow-sm"
                   id="bento-box-3"
                 >
                   <div className="flex flex-col items-end text-right relative z-20 max-w-[160px] space-y-2">
@@ -1643,6 +1898,11 @@ export default function App() {
                     <p className="text-[12px] font-normal leading-[1.3] text-[var(--text-main)] opacity-60">
                       Track your progress, accomplishments, stats and change settings
                     </p>
+                  </div>
+
+                  <div className="flex flex-col items-end text-right relative z-20 opacity-50 text-[11px] font-mono">
+                    <span>work: {formatEarnedTime(workSeconds)}</span>
+                    <span>mult: {formatMultiplier(currentMultiplier)}</span>
                   </div>
                 </div>
 

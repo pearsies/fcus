@@ -20,6 +20,9 @@ live demo @ [fcusapp.ai.studio](https://fcusapp.ai.studio)
   - track your daily 30-minute focus streak with gentle progress indicators.
 - 🎯 **daily quests**:
   - light daily objectives to keep you motivated and earn bonus relaxation minutes.
+- ✅ **to-do list with time rewards**:
+  - complete daily priorities in a minimal list with quick completion directly from the bento box.
+  - each finished task banks +3 minutes of relaxation time scaled by your session multiplier.
 - 🧠 **ai recall + work logger**:
   - practice questions generated on-demand by gemini ai from topics or uploaded study notes.
   - log offline work activities to have ai evaluate and bank earned free time.
