@@ -20,18 +20,23 @@ live demo @ [fcusapp.ai.studio](https://fcusapp.ai.studio)
   - track your daily 30-minute focus streak with gentle progress indicators.
 - 🎯 **daily quests**:
   - light daily objectives to keep you motivated and earn bonus relaxation minutes.
-- ✅ **to-do list with time rewards**:
-  - complete daily priorities in a minimal list with quick completion directly from the bento box.
-  - each finished task banks +3 minutes of relaxation time scaled by your session multiplier.
+- ✅ **to-do list with time rewards & task weights**:
+  - complete daily priorities in a minimal list with inline completion directly from the bento box.
+  - pick task scope: `quick (+1m)`, `standard (+3m)`, or `deep (+5m)`, banking free time scaled by your session multiplier.
+- ⌨️ **global keyboard shortcuts**:
+  - `space` to pause/start, `w` for work mode, `r` for relax mode, `t` for to-dos, `m` for mute/unmute, `?` for shortcuts cheat-sheet, and `esc` to return to timer.
+- 🏷️ **dynamic browser tab title**:
+  - live tab status with countdown/elapsed timer and status indicator (`▶ [18:42] relax · fcus` or `⏸ [25:00] work · fcus`) so you can track time across tabs.
+- 🔔 **harmonic milestone chimes**:
+  - gentle synthesized web audio chimes when reaching a 25-minute deep focus flow milestone or when relaxation time finishes.
 - 🧠 **ai recall + work logger**:
   - practice questions generated on-demand by gemini ai from topics or uploaded study notes.
   - log offline work activities to have ai evaluate and bank earned free time.
 - ☁️ **cloud sync & guest mode**:
   - cloud persistence with firebase auth (google sign-in & email) and firestore.
   - works completely offline in guest mode right out of the box.
-- 🎨 **cozy minimalist design & sound**:
-  - minimalist ui/ux with soothing dark and light color modes.
-  - soft chimes when sessions finish or milestones are reached.
+- 🎨 **cozy minimalist design**:
+  - minimalist typography and layout with soothing dark and light color modes.
 
 ---
 

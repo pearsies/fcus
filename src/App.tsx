@@ -227,6 +227,10 @@ export default function App() {
     return [];
   });
   const [newTodoText, setNewTodoText] = useState<string>('');
+  const [newTodoReward, setNewTodoReward] = useState<number>(3); // 1 (quick), 3 (standard), 5 (deep)
+
+  // Keyboard Shortcuts Modal state
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
 
   useEffect(() => {
     localStorage.setItem('fcus_todos', JSON.stringify(todos));
@@ -340,26 +344,62 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, [currentUser, secondsLeft, workSeconds, streak, todayFocusSeconds, todayCredited, manualLogged, claimedQuests, todos]);
 
-  // Sound chime helper
-  const playChime = () => {
+  // Sound chime helper with tone styles
+  const playChime = (type: 'chime' | 'milestone' | 'finish' = 'chime') => {
     if (!soundEnabled) return;
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3); // A5
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.5);
+
+      if (type === 'milestone') {
+        // Uplifting 3-note harmonic arpeggio (C5 -> E5 -> G5)
+        const notes = [523.25, 659.25, 783.99];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const startTime = ctx.currentTime + idx * 0.11;
+          osc.frequency.setValueAtTime(freq, startTime);
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.38);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.4);
+        });
+      } else if (type === 'finish') {
+        // Calming descending notes when relaxation ends (A4 -> E4)
+        const notes = [440, 329.63];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const startTime = ctx.currentTime + idx * 0.16;
+          osc.frequency.setValueAtTime(freq, startTime);
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.45);
+        });
+      } else {
+        // Crisp standard chime (D5 -> A5)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.14, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.45);
+      }
     } catch {
-      // Audio context play restriction ignore
+      // Audio context policy catch
     }
   };
 
@@ -478,7 +518,7 @@ export default function App() {
         if (curLeft <= elapsedSeconds) {
           setSecondsLeft(0);
           setIsRunning(false);
-          playChime();
+          playChime('finish');
           showToast("Relaxation time ended!");
         } else {
           setSecondsLeft((prev) => Math.max(0, prev - elapsedSeconds));
@@ -491,6 +531,11 @@ export default function App() {
 
         for (let i = 0; i < elapsedSeconds; i++) {
           tempContinuous += 1;
+          // Milestone chime every 25 minutes (1500 seconds) of continuous focus
+          if (tempContinuous > 0 && tempContinuous % 1500 === 0) {
+            playChime('milestone');
+            showToast("25m focus milestone reached! Great flow.");
+          }
           const sBonus = Math.min(1.5, Math.floor(tempContinuous / 1200) * 0.25);
           const mult = baseMult + sBonus;
           totalEarned += 0.2 * mult;
@@ -506,7 +551,7 @@ export default function App() {
         if (curFocus < 1800 && nextFocus >= 1800 && !todayCreditedRef.current) {
           setStreak((s) => s + 1);
           setTodayCredited(true);
-          playChime();
+          playChime('milestone');
           showToast("Daily 30m goal reached! Streak increased.");
         }
         setTodayFocusSeconds((prev) => prev + elapsedSeconds);
@@ -530,6 +575,92 @@ export default function App() {
       window.removeEventListener('pageshow', handleSync);
     };
   }, [isRunning, mode]);
+
+  // Synchronize dynamic browser tab title with active status & time
+  useEffect(() => {
+    const timeDisplay = mode === 'relax' ? formatEarnedTime(secondsLeft) : formatEarnedTime(workSeconds);
+    const statusIcon = isRunning ? '▶' : '⏸';
+    document.title = `${statusIcon} [${timeDisplay}] ${mode} · fcus`;
+  }, [mode, secondsLeft, workSeconds, isRunning]);
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const tagName = (activeEl?.tagName || '').toLowerCase();
+      const isInput =
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        (activeEl as HTMLElement)?.isContentEditable;
+
+      // Escape key handles closing modals and screens or blurring inputs
+      if (e.key === 'Escape') {
+        if (isInput) {
+          (activeEl as HTMLElement)?.blur();
+          return;
+        }
+        if (showShortcutsModal) {
+          setShowShortcutsModal(false);
+          return;
+        }
+        if (confirmModal) {
+          setConfirmModal(null);
+          return;
+        }
+        if (showAuthModal) {
+          setShowAuthModal(false);
+          return;
+        }
+        if (activeScreen) {
+          setActiveScreen(null);
+          return;
+        }
+        return;
+      }
+
+      // Do not trigger timer or mode shortcuts while user is actively typing
+      if (isInput) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.key === 'w' || e.key === 'W') {
+        e.preventDefault();
+        if (mode !== 'work') {
+          setMode('work');
+          setIsRunning(true);
+          showToast('Switched to work mode');
+        }
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        if (mode !== 'relax') {
+          setWorkSeconds(0);
+          setContinuousSeconds(0);
+          setSessionEarnedSeconds(0);
+          setMode('relax');
+          setIsRunning(true);
+          showToast('Switched to relax mode');
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        setSoundEnabled((prev) => {
+          const next = !prev;
+          showToast(next ? 'Sound unmuted' : 'Sound muted');
+          return next;
+        });
+      } else if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        setActiveScreen((prev) => (prev === 'todos' ? null : 'todos'));
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setShowShortcutsModal((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mode, isRunning, activeScreen, showShortcutsModal, confirmModal, showAuthModal]);
 
   const toggleMode = () => {
     const nextMode = mode === 'relax' ? 'work' : 'relax';
@@ -960,17 +1091,18 @@ export default function App() {
     e.preventDefault();
     const trimmed = newTodoText.trim();
     if (!trimmed) return;
+    const reward = newTodoReward || 3;
     const newTodo: TodoItem = {
       id: `todo_${Date.now()}`,
       text: trimmed,
       completed: false,
-      rewardMinutes: 3,
+      rewardMinutes: reward,
       rewarded: false,
       createdAt: Date.now(),
     };
     setTodos((prev) => [newTodo, ...prev]);
     setNewTodoText('');
-    showToast('Task added (+3m on completion)');
+    showToast(`Task added (+${reward}m on completion)`);
   };
 
   const handleDeleteTodo = (id: string, e?: MouseEvent) => {
@@ -1064,7 +1196,48 @@ export default function App() {
                     <span className="text-[15px] opacity-80 font-normal">{formatMultiplier(baseMultiplier)}</span>
                   </div>
 
-                  <div className="pt-2 flex justify-between items-center opacity-60">
+                  {/* Keyboard Shortcuts in Settings */}
+                  <div className="flex flex-col gap-2.5 pt-1 border-b border-[var(--border-default)] pb-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[14px] opacity-70">Keyboard Shortcuts</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowShortcutsModal(true)}
+                        className="text-[12px] opacity-75 hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
+                      >
+                        cheat sheet [?]
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px] opacity-65">
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono bg-[var(--btn-secondary)] px-1.5 py-0.5 rounded text-[11px]">Space</span>
+                        <span>play / pause</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono bg-[var(--btn-secondary)] px-1.5 py-0.5 rounded text-[11px]">w</span>
+                        <span>work mode</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono bg-[var(--btn-secondary)] px-1.5 py-0.5 rounded text-[11px]">r</span>
+                        <span>relax mode</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono bg-[var(--btn-secondary)] px-1.5 py-0.5 rounded text-[11px]">t</span>
+                        <span>to-do list</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono bg-[var(--btn-secondary)] px-1.5 py-0.5 rounded text-[11px]">m</span>
+                        <span>toggle sound</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono bg-[var(--btn-secondary)] px-1.5 py-0.5 rounded text-[11px]">Esc</span>
+                        <span>back to timer</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 flex justify-between items-center opacity-60">
                     <button
                       onClick={triggerResetFreeTime}
                       className="text-[13px] hover:opacity-100 transition-all underline cursor-pointer bg-transparent border-none p-0"
@@ -1513,25 +1686,49 @@ export default function App() {
               {activeScreen === 'todos' && (
                 <div className="flex flex-col gap-5 text-left">
                   <p className="text-[13px] opacity-60 leading-relaxed">
-                    Stay on top of your daily priorities. Completing a task awards <strong className="font-medium opacity-85">+3 minutes</strong> of free relaxation time (scaled by your current {formatMultiplier(currentMultiplier)} multiplier).
+                    Stay on top of your daily priorities. Completing tasks awards free relaxation time based on task scope (scaled by your current {formatMultiplier(currentMultiplier)} multiplier).
                   </p>
 
-                  {/* Add task form */}
-                  <form onSubmit={handleAddTodo} className="flex gap-3 items-center border-b border-[var(--border-input)] pb-1.5 focus-within:border-[var(--border-input-focus)] transition-all">
-                    <input
-                      type="text"
-                      value={newTodoText}
-                      onChange={(e) => setNewTodoText(e.target.value)}
-                      placeholder="add a new task to conquer..."
-                      className="flex-1 bg-transparent py-1 text-[14px] text-[var(--text-main)] opacity-90 outline-none placeholder-[var(--placeholder-color)]"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!newTodoText.trim()}
-                      className="text-[13px] opacity-75 hover:opacity-100 transition-all cursor-pointer underline disabled:opacity-30 shrink-0 bg-transparent border-none p-0 text-[var(--text-main)]"
-                    >
-                      add task +
-                    </button>
+                  {/* Add task form with custom reward weights */}
+                  <form onSubmit={handleAddTodo} className="flex flex-col gap-2.5 border-b border-[var(--border-input)] pb-2.5 focus-within:border-[var(--border-input-focus)] transition-all">
+                    <div className="flex gap-3 items-center">
+                      <input
+                        type="text"
+                        value={newTodoText}
+                        onChange={(e) => setNewTodoText(e.target.value)}
+                        placeholder="add a new task to conquer..."
+                        className="flex-1 bg-transparent py-1 text-[14px] text-[var(--text-main)] opacity-90 outline-none placeholder-[var(--placeholder-color)]"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newTodoText.trim()}
+                        className="text-[13px] opacity-75 hover:opacity-100 transition-all cursor-pointer underline disabled:opacity-30 shrink-0 bg-transparent border-none p-0 text-[var(--text-main)]"
+                      >
+                        add task +
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] opacity-70">
+                      <span className="opacity-45">task weight:</span>
+                      {[
+                        { label: 'quick (+1m)', val: 1 },
+                        { label: 'standard (+3m)', val: 3 },
+                        { label: 'deep (+5m)', val: 5 },
+                      ].map((w) => (
+                        <button
+                          key={w.val}
+                          type="button"
+                          onClick={() => setNewTodoReward(w.val)}
+                          className={`px-2 py-0.5 rounded-md transition-all cursor-pointer border ${
+                            newTodoReward === w.val
+                              ? 'bg-[var(--text-main)] text-[var(--bg-main)] border-transparent font-medium opacity-90'
+                              : 'bg-transparent text-[var(--text-main)] border-[var(--border-subtle)] opacity-50 hover:opacity-85'
+                          }`}
+                        >
+                          {w.label}
+                        </button>
+                      ))}
+                    </div>
                   </form>
 
                   {/* Task list */}
@@ -1690,30 +1887,35 @@ export default function App() {
                 </>
               )}
 
-              {/* Minimal Control Button */}
-              <button
-                onClick={togglePlay}
-                className="w-[44px] h-[44px] rounded-full border border-[var(--text-main)] opacity-60 hover:opacity-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer bg-transparent outline-none"
-                aria-label={isRunning ? 'Pause' : 'Start'}
-                title={isRunning ? 'Pause' : 'Start'}
-                id="timer-control-btn"
-              >
-                {isRunning ? (
-                  // Minimal Pause Icon (||)
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--text-main)]">
-                    <rect x="6.5" y="4" width="3" height="16" rx="0.5" />
-                    <rect x="14.5" y="4" width="3" height="16" rx="0.5" />
-                  </svg>
-                ) : (
-                  // Minimal Play Icon (▶)
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--text-main)] translate-x-[1px]">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
+              {/* Minimal Control Button & Subtle Shortcut Hint */}
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={togglePlay}
+                  className="w-[44px] h-[44px] rounded-full border border-[var(--text-main)] opacity-60 hover:opacity-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer bg-transparent outline-none"
+                  aria-label={isRunning ? 'Pause' : 'Start'}
+                  title={isRunning ? 'Pause (space)' : 'Start (space)'}
+                  id="timer-control-btn"
+                >
+                  {isRunning ? (
+                    // Minimal Pause Icon (||)
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--text-main)]">
+                      <rect x="6.5" y="4" width="3" height="16" rx="0.5" />
+                      <rect x="14.5" y="4" width="3" height="16" rx="0.5" />
+                    </svg>
+                  ) : (
+                    // Minimal Play Icon (▶)
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--text-main)] translate-x-[1px]">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-[11px] opacity-30 select-none lowercase">
+                  space to {isRunning ? 'pause' : 'start'}
+                </span>
+              </div>
             </main>
 
-            {/* Bottom spacer / What is this & Theme toggle right at the bottom of the fold */}
+            {/* Bottom bar: What is this, Shortcuts & Theme toggle */}
             <footer className="w-full py-2 flex justify-center items-center gap-3.5 z-10 shrink-0">
               <button
                 type="button"
@@ -1721,6 +1923,14 @@ export default function App() {
                 className="text-[12px] font-normal underline text-[var(--text-main)] opacity-40 hover:opacity-80 transition-all cursor-pointer bg-transparent border-none p-0 outline-none"
               >
                 what is this?
+              </button>
+              <span className="text-[12px] opacity-25">·</span>
+              <button
+                type="button"
+                onClick={() => setShowShortcutsModal(true)}
+                className="text-[12px] font-normal underline text-[var(--text-main)] opacity-40 hover:opacity-80 transition-all cursor-pointer bg-transparent border-none p-0 outline-none"
+              >
+                [?] shortcuts
               </button>
               <span className="text-[12px] opacity-25">·</span>
               <button
@@ -2085,6 +2295,75 @@ export default function App() {
                   className="px-3.5 py-1.5 rounded-lg bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] text-[var(--btn-primary-text)] text-[12px] font-medium transition-all cursor-pointer border-none"
                 >
                   {confirmModal.actionLabel}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Keyboard Shortcuts Cheat-Sheet Modal */}
+      <AnimatePresence>
+        {showShortcutsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed inset-0 z-50 bg-[var(--modal-overlay)] backdrop-blur-[2px] flex items-center justify-center p-4"
+            onClick={() => setShowShortcutsModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 6 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-[360px] bg-[var(--modal-bg)] rounded-2xl p-6 flex flex-col gap-4 text-left text-[var(--text-main)] shadow-lg"
+            >
+              <div className="flex justify-between items-center">
+                <h3 className="text-[17px] font-normal lowercase opacity-85">
+                  keyboard shortcuts
+                </h3>
+                <button
+                  onClick={() => setShowShortcutsModal(false)}
+                  className="text-[14px] opacity-40 hover:opacity-85 transition-all cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-[12px] opacity-50 leading-relaxed">
+                Control your session quickly without taking your hands off the keyboard:
+              </p>
+
+              <div className="flex flex-col gap-2 pt-1 border-t border-[var(--border-subtle)]">
+                {[
+                  { key: 'Space', desc: 'start or pause timer' },
+                  { key: 'w', desc: 'switch to work mode' },
+                  { key: 'r', desc: 'switch to relax mode' },
+                  { key: 't', desc: 'jump to to-do list' },
+                  { key: 'm', desc: 'mute / unmute chime sound' },
+                  { key: '?', desc: 'toggle this shortcuts guide' },
+                  { key: 'Esc', desc: 'close modal / back to timer' },
+                ].map((item) => (
+                  <div key={item.key} className="flex justify-between items-center text-[12px] py-0.5">
+                    <span className="font-mono bg-[var(--btn-secondary)] px-2 py-0.5 rounded text-[11px] opacity-85 border border-[var(--border-subtle)]">
+                      {item.key}
+                    </span>
+                    <span className="opacity-70 text-[12px]">{item.desc}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-[var(--border-subtle)] flex justify-between items-center text-[11px] opacity-45">
+                <span>press Esc anytime to dismiss</span>
+                <button
+                  type="button"
+                  onClick={() => setShowShortcutsModal(false)}
+                  className="underline cursor-pointer hover:opacity-100 bg-transparent border-none p-0 text-[var(--text-main)]"
+                >
+                  close
                 </button>
               </div>
             </motion.div>
