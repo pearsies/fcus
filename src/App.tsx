@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, FormEvent, ChangeEvent, MouseEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, ChangeEvent, MouseEvent, DragEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   auth,
@@ -228,6 +228,8 @@ export default function App() {
   });
   const [newTodoText, setNewTodoText] = useState<string>('');
   const [newTodoReward, setNewTodoReward] = useState<number>(3); // 1 (quick), 3 (standard), 5 (deep)
+  const [draggedTodoIndex, setDraggedTodoIndex] = useState<number | null>(null);
+  const [dragOverTodoIndex, setDragOverTodoIndex] = useState<number | null>(null);
 
   // Keyboard Shortcuts Modal state
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
@@ -1115,6 +1117,69 @@ export default function App() {
     showToast('Cleared completed tasks');
   };
 
+  const moveTodo = (index: number, direction: 'up' | 'down', e?: MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= todos.length) return;
+    setTodos((prev) => {
+      const updated = [...prev];
+      const [moved] = updated.splice(index, 1);
+      updated.splice(targetIndex, 0, moved);
+      return updated;
+    });
+  };
+
+  const reorderTodo = (startIndex: number, endIndex: number) => {
+    if (startIndex === endIndex || startIndex < 0 || endIndex < 0) return;
+    setTodos((prev) => {
+      const updated = [...prev];
+      const [moved] = updated.splice(startIndex, 1);
+      updated.splice(endIndex, 0, moved);
+      return updated;
+    });
+  };
+
+  const handleSortTodosIncompleteFirst = () => {
+    setTodos((prev) => {
+      const incomplete = prev.filter((t) => !t.completed);
+      const completed = prev.filter((t) => t.completed);
+      return [...incomplete, ...completed];
+    });
+    showToast('Sorted: incomplete tasks first');
+  };
+
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(index));
+    } catch {
+      // fallback for older browsers
+    }
+    setDraggedTodoIndex(index);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverTodoIndex !== index) {
+      setDragOverTodoIndex(index);
+    }
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedTodoIndex !== null && draggedTodoIndex !== dropIndex) {
+      reorderTodo(draggedTodoIndex, dropIndex);
+    }
+    setDraggedTodoIndex(null);
+    setDragOverTodoIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTodoIndex(null);
+    setDragOverTodoIndex(null);
+  };
+
   const completedTodosCount = todos.filter((t) => t.completed).length;
 
   return (
@@ -1731,6 +1796,24 @@ export default function App() {
                     </div>
                   </form>
 
+                  {/* Reorder toolbar if multiple tasks */}
+                  {todos.length > 1 && (
+                    <div className="flex justify-between items-center text-[11px] opacity-50 px-1 pt-0.5 select-none">
+                      <span className="flex items-center gap-1.5">
+                        <span>⋮⋮</span>
+                        <span>drag or use ▲ ▼ to reorder</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSortTodosIncompleteFirst}
+                        className="underline hover:opacity-100 cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
+                        title="Move all incomplete tasks to the top"
+                      >
+                        incomplete first
+                      </button>
+                    </div>
+                  )}
+
                   {/* Task list */}
                   <div className="flex flex-col gap-1.5 pt-1 max-h-[340px] overflow-y-auto pr-1">
                     {todos.length === 0 ? (
@@ -1738,33 +1821,89 @@ export default function App() {
                         no tasks yet. add one above to earn relaxation time!
                       </p>
                     ) : (
-                      todos.map((todo) => {
+                      todos.map((todo, index) => {
                         const rewardMins = Math.round((todo.rewardMinutes || 3) * currentMultiplier);
+                        const isDragged = draggedTodoIndex === index;
+                        const isOver = dragOverTodoIndex === index && draggedTodoIndex !== index;
+
                         return (
                           <div
                             key={todo.id}
-                            className="flex items-center justify-between gap-3 py-2 px-1 border-b border-[var(--border-subtle)] group"
+                            draggable={true}
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDrop={(e) => handleDrop(e, index)}
+                            onDragEnd={handleDragEnd}
+                            className={`flex items-center justify-between gap-2.5 py-2 px-1 border-b border-[var(--border-subtle)] group transition-all duration-150 rounded ${
+                              isDragged ? 'opacity-30 bg-[var(--text-main)]/5' : ''
+                            } ${
+                              isOver ? 'border-t-2 border-t-[var(--text-main)] bg-[var(--text-main)]/5' : ''
+                            }`}
                           >
-                            <div
-                              onClick={(e) => toggleTodo(todo.id, e)}
-                              className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
-                            >
-                              <div
-                                className={`w-4 h-4 rounded-full border border-[var(--border-input-focus)] flex items-center justify-center shrink-0 transition-all ${
-                                  todo.completed
-                                    ? 'bg-[var(--track-fill)] text-[var(--bg-main)] border-transparent'
-                                    : 'hover:border-[var(--text-main)]'
-                                }`}
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {/* Drag Grip Handle */}
+                              <button
+                                type="button"
+                                className="text-[var(--text-main)] opacity-25 group-hover:opacity-70 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-0.5 -ml-0.5 shrink-0 bg-transparent border-none"
+                                title="Drag to reorder"
+                                aria-label="Drag to reorder"
                               >
-                                {todo.completed && <span className="text-[10px] font-bold">✓</span>}
+                                <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+                                  <circle cx="2.5" cy="2.5" r="1.3" />
+                                  <circle cx="7.5" cy="2.5" r="1.3" />
+                                  <circle cx="2.5" cy="7" r="1.3" />
+                                  <circle cx="7.5" cy="7" r="1.3" />
+                                  <circle cx="2.5" cy="11.5" r="1.3" />
+                                  <circle cx="7.5" cy="11.5" r="1.3" />
+                                </svg>
+                              </button>
+
+                              {/* Up / Down Arrow Reorder Buttons */}
+                              <div className="flex flex-col items-center justify-center gap-0.5 shrink-0 opacity-20 group-hover:opacity-75 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={(e) => moveTodo(index, 'up', e)}
+                                  disabled={index === 0}
+                                  className="text-[9px] leading-none hover:opacity-100 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
+                                  title="Move up"
+                                  aria-label="Move task up"
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => moveTodo(index, 'down', e)}
+                                  disabled={index === todos.length - 1}
+                                  className="text-[9px] leading-none hover:opacity-100 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer bg-transparent border-none p-0 text-[var(--text-main)]"
+                                  title="Move down"
+                                  aria-label="Move task down"
+                                >
+                                  ▼
+                                </button>
                               </div>
-                              <span
-                                className={`text-[14px] leading-snug break-words ${
-                                  todo.completed ? 'line-through opacity-40' : 'opacity-85'
-                                }`}
+
+                              {/* Toggle checkbox & Text */}
+                              <div
+                                onClick={(e) => toggleTodo(todo.id, e)}
+                                className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
                               >
-                                {todo.text}
-                              </span>
+                                <div
+                                  className={`w-4 h-4 rounded-full border border-[var(--border-input-focus)] flex items-center justify-center shrink-0 transition-all ${
+                                    todo.completed
+                                      ? 'bg-[var(--track-fill)] text-[var(--bg-main)] border-transparent'
+                                      : 'hover:border-[var(--text-main)]'
+                                  }`}
+                                >
+                                  {todo.completed && <span className="text-[10px] font-bold">✓</span>}
+                                </div>
+                                <span
+                                  className={`text-[14px] leading-snug break-words ${
+                                    todo.completed ? 'line-through opacity-40' : 'opacity-85'
+                                  }`}
+                                >
+                                  {todo.text}
+                                </span>
+                              </div>
                             </div>
 
                             <div className="flex items-center gap-3 shrink-0">
@@ -2044,7 +2183,7 @@ export default function App() {
                     </h2>
 
                     <p className="text-[12px] font-normal leading-[1.3] text-[var(--text-main)] opacity-60">
-                      Finish tasks to stay on track and earn relaxation time (+3m each)
+                      Finish tasks to stay on track and earn relaxation time (+1m to +5m)
                     </p>
 
                     <span className="text-[12px] font-normal text-[var(--text-main)] opacity-70 pt-0.5">
